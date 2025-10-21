@@ -1,0 +1,6 @@
+name: SpawnProtect
+version: 1.0
+main: fr.dev1lroot.mcplugins.spawnprotect.Main
+api-version: 1.21.7
+author: Dev1lroot
+description: Spawn Protection Plugin for Paper 1.21.7
