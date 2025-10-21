@@ -1,7 +1,5 @@
 package fr.dev1lroot.mcplugins.spawnprotect;
 
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.event.EventHandler;
@@ -14,6 +12,9 @@ import java.util.Iterator;
 
 public class Main extends JavaPlugin implements Listener
 {
+    private int centerX;
+    private int centerZ;
+    private int protectedRadius;
     final String sPluginName = "SpawnProtect";
 
     // Функция запуска плагина
@@ -22,87 +23,66 @@ public class Main extends JavaPlugin implements Listener
     {
         getLogger().info("The plugin has been enabled");
 
-        // Перегружаем игровые события
+        // copy default config.yml from plugin
+        saveDefaultConfig();
+
+        // setting up positions and radius
+        centerX = getConfig().getInt("center-x");
+        centerZ = getConfig().getInt("center-z");
+        protectedRadius = getConfig().getInt("protected-radius");
+
+        // enabling game events override
         Bukkit.getPluginManager().registerEvents(this, this);
     }
 
-    // Игрок может ломать всё — ничего не отменяем
-    @EventHandler
-    public void onBlockBreak(BlockBreakEvent event)
-    {
-        // просто заглушка для логики — но ничего не блокируем
-    }
-
-    // Отобразить красивое сообщение
-    private void message(String string)
-    {
-        // Префикс
-        Component msg = Component.text("[" + sPluginName + "] ", NamedTextColor.GOLD)
-                .append(Component.text(string, NamedTextColor.WHITE));
-
-        Bukkit.getServer().sendMessage(msg);
-    }
-
-    // Взрывы блоков (TNT, фейерболы, и т.д.)
+    // TNT and e.t.c.
     @EventHandler
     public void onBlockExplode(BlockExplodeEvent event)
     {
-        boolean bHasProtectedBlocks = false;
-
         Iterator<Block> it = event.blockList().iterator();
         while (it.hasNext())
         {
             Block block = it.next();
             if (isBlockProtected(block))
             {
-                it.remove(); // Убираем блок из списка взрыва
-                bHasProtectedBlocks = true; // Отмечаем что была попытка уничтожить защищенный блок
+                it.remove();
             }
-        }
-
-        if(bHasProtectedBlocks)
-        {
-            message("блоки в пределах спавна не уничтожаются взрывами"); // Убрать на релизе чтобы не спамить
         }
     }
 
-    // Взрывы от существ (в том числе визер, крипер, TNTMinecart)
+    // Creeper explosions, Wither
     @EventHandler
     public void onEntityExplode(EntityExplodeEvent event)
     {
-        boolean bHasProtectedBlocks = false;
-
         Iterator<Block> it = event.blockList().iterator();
         while (it.hasNext())
         {
             Block block = it.next();
             if (isBlockProtected(block))
             {
-                it.remove(); // Блок не будет уничтожен
-                bHasProtectedBlocks = true; // Отмечаем что была попытка уничтожить защищенный блок
+                it.remove();
             }
-        }
-
-        if(bHasProtectedBlocks)
-        {
-            message("блоки в пределах спавна не уничтожаются взрывами"); // Убрать на релизе чтобы не спамить
         }
     }
 
-    // Проверяем защищен ли блок зоной спавна
+    // Check whether block is protected or not
     private boolean isBlockProtected(Block block)
     {
+        // If radius set to zero - skipping at all
+        if(protectedRadius == 0) return false;
+
+        // Getting block coordinates
         int x = block.getX();
         int z = block.getZ();
 
-        // Вычисляем реальное расстояние от точки (0, 0)
-        double distance = Math.sqrt(Math.pow(x, 2) + Math.pow(z, 2));
+        // Distance from center point
+        double distance = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(z - centerZ, 2));
 
-        // Проверяем радиус 1000 блоков
-        return 1000 > distance;
+        // Check whether block is within protected radius
+        return protectedRadius > distance;
     }
 
-    // Функция отключения плагина
+    // On plugin disabled
     @Override
     public void onDisable()
     {
